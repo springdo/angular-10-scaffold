@@ -1,14 +1,19 @@
 {
   "name": "learning-experience-platform",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "ng serve --host 0.0.0.0 --disableHostCheck true --proxy-config proxyconf.json",
     "build": "ng build",
-    "test": "ng test",
+    "test:ng": "ng test --coverage",
+    "test": "jest --coverage",
+    "test:ci": "export JEST_JUNIT_OUTPUT_DIR='./reports/unit/' && jest --ci --coverage",
     "lint": "ng lint",
+    "lint:fix": "ng lint --fix",
     "format:write": "prettier src/app/**/*.{ts,json,scss} --write",
-    "format:test": "prettier src/app/**/*.{ts,json,scss} --list-different"
+    "format:test": "prettier src/app/**/*.{ts,json,scss} --list-different",
+    "clean": "rm -rf reports dist package-contents*",
+    "package": "mkdir -p package-contents && cp -vr dist Dockerfile nginx.conf package-contents && zip -r package-contents.zip package-contents"
   },
   "private": true,
   "dependencies": {
@@ -39,6 +44,7 @@
     "jasmine-core": "~3.5.0",
     "jasmine-spec-reporter": "~5.0.0",
     "jest": "^26.1.0",
+    "jest-junit": "^11.0.1",
     "jest-preset-angular": "^8.2.1",
     "prettier": "^2.0.5",
     "ts-node": "~8.3.0",
