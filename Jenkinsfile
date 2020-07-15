@@ -283,8 +283,11 @@ pipeline {
                 }
             }
         }
-
+        
         stage("Trigger System Tests") {
+            options {
+                skipDefaultCheckout(true)
+            }            
             agent {
                 node {
                     label "master"
@@ -297,6 +300,8 @@ pipeline {
                 sh  '''
                     echo "TODO - Run tests"               
                 '''
+                build job: 'system-tests/master', wait: false
+
             }
         }
     }
