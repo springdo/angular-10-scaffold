@@ -8,7 +8,7 @@ pipeline {
         NAME = "learning-experience-platform"
 
         // Config repo managed by ArgoCD details
-        ARGOCD_CONFIG_REPO = "github.com/springdo/lxp-config.git"
+        ARGOCD_CONFIG_REPO = "github.com/who-lxp/lxp-config.git"
         ARGOCD_CONFIG_REPO_PATH = "lxp-deployment/values-test.yaml"
         ARGOCD_CONFIG_REPO_BRANCH = "master"
         
@@ -19,7 +19,7 @@ pipeline {
         // Credentials bound in OpenShift
         GIT_CREDS = credentials("${OPENSHIFT_BUILD_NAMESPACE}-git-auth")
         NEXUS_CREDS = credentials("${OPENSHIFT_BUILD_NAMESPACE}-nexus-password")
-        QUAY_PUSH_SECRET = "springdo-petbattlepipeline-secret"
+        QUAY_PUSH_SECRET = "who-lxp-imagepusher-secret"
 
         // Nexus Artifact repos
         NEXUS_REPO_NAME="labs-static"
@@ -51,7 +51,7 @@ pipeline {
                     }
                     steps {
                         script {
-                            env.TARGET_NAMESPACE = "springdo"
+                            env.TARGET_NAMESPACE = "who-lxp"
                             // External image push registry info
                             env.IMAGE_REPOSITORY = "quay.io"
                             // app name for master is just learning-experience-platform or something
