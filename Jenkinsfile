@@ -7,10 +7,10 @@ pipeline {
         // GLobal Vars
         NAME = "learning-experience-platform"
 
-        // 
-        ARGOCD_CONFIG_REPO = "github.com/springdo/ubiquitous-journey.git"
-        ARGOCD_CONFIG_REPO_PATH = "example-deployment/values-applications.yaml"
-        ARGOCD_CONFIG_REPO_BRANCH = "ds-env"
+        // Config repo managed by ArgoCD details
+        ARGOCD_CONFIG_REPO = "github.com/springdo/lxp-config.git"
+        ARGOCD_CONFIG_REPO_PATH = "lxp-deployment/values-test.yaml"
+        ARGOCD_CONFIG_REPO_BRANCH = "master"
         
         // Job name contains the branch eg ds-app-feature%2Fjenkins-123
         JOB_NAME = "${JOB_NAME}".replace("%2F", "-").replace("/", "-")
@@ -19,10 +19,9 @@ pipeline {
         // Credentials bound in OpenShift
         GIT_CREDS = credentials("${OPENSHIFT_BUILD_NAMESPACE}-git-auth")
         NEXUS_CREDS = credentials("${OPENSHIFT_BUILD_NAMESPACE}-nexus-password")
-        ARGOCD_CREDS = credentials("${OPENSHIFT_BUILD_NAMESPACE}-argocd-token")
         QUAY_PUSH_SECRET = "springdo-petbattlepipeline-secret"
 
-        // Nexus Artifact repo 
+        // Nexus Artifact repos
         NEXUS_REPO_NAME="labs-static"
         NEXUS_REPO_HELM = "helm-charts"
     }
@@ -55,7 +54,6 @@ pipeline {
                             env.TARGET_NAMESPACE = "springdo"
                             // External image push registry info
                             env.IMAGE_REPOSITORY = "quay.io"
-                            env.
                             // app name for master is just learning-experience-platform or something
                             env.APP_NAME = "${NAME}".replace("/", "-").toLowerCase()
                         }
@@ -128,7 +126,7 @@ pipeline {
                 sh 'npm run lint'
 
                 echo '### Running tests ###'
-                // sh 'npm run test'
+                sh 'npm run test:ci'
 
                 echo '### Running build ###'
                 sh '''
@@ -155,7 +153,6 @@ pipeline {
                         reportFiles: 'index.html',
                         reportName: 'FE Code Coverage'
                     ]
-                    // Notify slack or some such
                 }
             }
         }
@@ -171,7 +168,6 @@ pipeline {
             }
             steps {
                 sh 'printenv'
-
                 echo '### Get Binary from Nexus and shove it in a box ###'
                 sh  '''
                     rm -rf ${PACKAGE}
@@ -179,7 +175,6 @@ pipeline {
 
                     BUILD_ARGS=" --build-arg git_commit=${GIT_COMMIT} --build-arg git_url=${GIT_URL}  --build-arg build_url=${RUN_DISPLAY_URL} --build-arg build_tag=${BUILD_TAG}"
                     echo ${BUILD_ARGS}
-                    
                     oc delete bc ${APP_NAME} || rc=$?
                     if [[ $TARGET_NAMESPACE == *"dev"* ]]; then
                         echo "🏗 Creating a sandbox build for inside the cluster 🏗"
@@ -269,14 +264,10 @@ pipeline {
                     steps {
                         echo '### Commit new image tag to git ###'
                         sh  '''
-                            # TODO ARGOCD create app?
-                            # TODO - fix all this after chat with @eformat
                             git clone https://${ARGOCD_CONFIG_REPO} config-repo
                             cd config-repo
                             git checkout ${ARGOCD_CONFIG_REPO_BRANCH}
 
-                            # TODO - @eformat we probs need to think about the app of apps approach or better logic here 
-                            # as using array[0] is 🧻
                             yq w -i ${ARGOCD_CONFIG_REPO_PATH} "applications.name==test-${NAME}.source_ref" ${VERSION}
 
                             git config --global user.email "jenkins@rht-labs.bot.com"
@@ -288,29 +279,12 @@ pipeline {
                             git remote set-url origin  https://${GIT_CREDS_USR}:${GIT_CREDS_PSW}@${ARGOCD_CONFIG_REPO}
                             git push -u origin ${ARGOCD_CONFIG_REPO_BRANCH}
                         '''
-
-                        echo '### Ask ArgoCD to Sync the changes and roll it out ###'
-                        sh '''
-                            # 1. Check if app of apps exists, if not create?
-                            # 1.1 Check sync not currently in progress . if so, kill it
-
-                            # 2. sync argocd to change pushed in previous step
-                            ARGOCD_INFO="--auth-token ${ARGOCD_CREDS_PSW} --server ${ARGOCD_SERVER_SERVICE_HOST}:${ARGOCD_SERVER_SERVICE_PORT_HTTP} --insecure"
-                            argocd app sync catz ${ARGOCD_INFO}
-                            argocd app wait catz ${ARGOCD_INFO}
-
-                            # todo sync child app 
-                            # argocd app sync test-${NAME} ${ARGOCD_INFO}
-                            # argocd app wait test-${NAME} ${ARGOCD_INFO}
-                        '''
                     }
                 }
-
-
             }
         }
 
-        stage("End to End Test") {
+        stage("Trigger System Tests") {
             agent {
                 node {
                     label "master"
@@ -321,70 +295,9 @@ pipeline {
             }
             steps {
                 sh  '''
-                    echo "TODO - Run tests"                
+                    echo "TODO - Run tests"               
                 '''
             }
         }
-
-        // stage("Promote app to Staging") {
-        //     agent {
-        //         node {
-        //             label "jenkins-slave-argocd"
-        //         }
-        //     }
-        //     when {
-        //         expression { GIT_BRANCH ==~ /(.*master)/ }
-        //     }
-        //     steps {
-        //         sh  '''
-        //             # TODO ARGOCD create app?
-        //             # TODO - fix all this after chat with @eformat
-        //             git clone https://${ARGOCD_CONFIG_REPO} config-repo
-        //             cd config-repo
-        //             git checkout ${ARGOCD_CONFIG_REPO_BRANCH}
-
-        //             # TODO - @eformat we probs need to think about the app of apps approach or better logic here 
-        //             # as using array[0] is 🧻
-        //             yq w -i ${ARGOCD_CONFIG_REPO_PATH} "applications.name==${APP_NAME}.source_ref" ${VERSION}
-
-        //             git config --global user.email "jenkins@rht-labs.bot.com"
-        //             git config --global user.name "Jenkins"
-        //             git config --global push.default simple
-
-        //             git add ${ARGOCD_CONFIG_REPO_PATH}
-        //             # grabbing the error code incase there is nothing to commit and allow jenkins proceed
-        //             git commit -m "🚀 AUTOMATED COMMIT - Deployment new app version ${VERSION} 🚀" || rc=$?
-        //             git remote set-url origin  https://${GIT_CREDS_USR}:${GIT_CREDS_PSW}@${ARGOCD_CONFIG_REPO}
-        //             git push -u origin ${ARGOCD_CONFIG_REPO_BRANCH}
-        //         '''
-
-        //         echo '### Ask ArgoCD to Sync the changes and roll it out ###'
-        //         sh '''
-        //             # 1. Check if app of apps exists, if not create?
-        //             # 1.1 Check sync not currently in progress . if so, kill it
-
-        //             # 2. sync argocd to change pushed in previous step
-        //             ARGOCD_INFO="--auth-token ${ARGOCD_CREDS_PSW} --server ${ARGOCD_SERVER_SERVICE_HOST}:${ARGOCD_SERVER_SERVICE_PORT_HTTP} --insecure"
-        //             argocd app sync catz ${ARGOCD_INFO}
-        //             argocd app wait catz ${ARGOCD_INFO}
-
-        //             # todo sync child app 
-        //             # argocd app sync ${NAME} ${ARGOCD_INFO}
-        //             # argocd app wait ${NAME} ${ARGOCD_INFO}
-        //         '''
-
-        //         sh  '''
-        //             echo "merge versions back to the original GIT repo as they should be persisted?"
-        //             git checkout ${GIT_BRANCH}
-        //             yq w -i chart/Chart.yaml 'appVersion' ${VERSION}
-        //             yq w -i chart/Chart.yaml 'version' ${VERSION}
-
-        //             git add chart/Chart.yaml
-        //             git commit -m "🚀 AUTOMATED COMMIT - Deployment of new app version ${VERSION} 🚀" || rc=$?
-        //             git remote set-url origin https://${GIT_CREDS_USR}:${GIT_CREDS_PSW}@github.com/springdo/learning-experience-platform.git
-        //             git push
-        //         '''
-        //     }
-        // }
     }
 }
