@@ -1,4 +1,5 @@
-FROM registry.access.redhat.com/rhscl/nginx-116-rhel7
+FROM registry.access.redhat.com/rhscl/nginx-114-rhel7
+# FROM image-registry.openshift-image-registry.svc:5000/openshift/nginx:1.14
 
 ARG build_url=default
 ARG git_commit=default
