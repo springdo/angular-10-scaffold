@@ -13,6 +13,7 @@
     "format:write": "prettier src/app/**/*.{ts,json,scss} --write",
     "format:test": "prettier src/app/**/*.{ts,json,scss} --list-different",
     "clean": "rm -rf reports dist package-contents*",
+    "version": "echo $npm_package_version",
     "package": "mkdir -p package-contents && cp -vr dist Dockerfile nginx.conf package-contents && zip -r package-contents.zip package-contents"
   },
   "private": true,
