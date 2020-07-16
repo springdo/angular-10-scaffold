@@ -300,8 +300,7 @@ pipeline {
                 sh  '''
                     echo "TODO - Run tests"               
                 '''
-                build job: 'system-tests/master', wait: false
-
+                build job: 'system-tests/master', parameters: [[$class: 'StringParameterValue', name: 'APP_NAME', value: "${APP_NAME}" ],[$class: 'StringParameterValue', name: 'VERSION', value: "${VERSION}"]], wait: false
             }
         }
     }
