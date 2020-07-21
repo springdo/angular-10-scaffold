@@ -51,8 +51,8 @@ pipeline {
                     }
                     steps {
                         script {
-                            env.TARGET_NAMESPACE = "who-lxp"
                             // External image push registry info
+                            env.TARGET_NAMESPACE = "who-lxp"
                             env.IMAGE_REPOSITORY = "quay.io"
                             // app name for master is just learning-experience-platform or something
                             env.APP_NAME = "${NAME}".replace("/", "-").toLowerCase()
@@ -73,31 +73,10 @@ pipeline {
                     }
                     steps {
                         script {
-                            env.TARGET_NAMESPACE = "ds-dev"
+                            env.TARGET_NAMESPACE = "labs-dev"
                             // Sandbox registry deets
                             env.IMAGE_REPOSITORY = 'image-registry.openshift-image-registry.svc:5000'
                             // ammend the name to create 'sandbox' deploys based on current branch
-                            env.APP_NAME = "${GIT_BRANCH}-${NAME}".replace("/", "-").toLowerCase()
-                            env.NODE_ENV = "test"
-                        }
-                    }
-                }
-                stage("Pull Request Build") {
-                    options {
-                        skipDefaultCheckout(true)
-                    }
-                    agent {
-                        node {
-                            label "master"
-                        }
-                    }
-                    when {
-                        expression { GIT_BRANCH.startsWith("PR-") }
-                    }
-                    steps {
-                        script {
-                            env.TARGET_NAMESPACE = "ds-dev"
-                            env.IMAGE_REPOSITORY = 'image-registry.openshift-image-registry.svc:5000'
                             env.APP_NAME = "${GIT_BRANCH}-${NAME}".replace("/", "-").toLowerCase()
                         }
                     }
@@ -178,7 +157,7 @@ pipeline {
                     oc delete bc ${APP_NAME} || rc=$?
                     if [[ $TARGET_NAMESPACE == *"dev"* ]]; then
                         echo "🏗 Creating a sandbox build for inside the cluster 🏗"
-                        oc new-build --binary --name=${APP_NAME} -l app=${APP_NAME} ${BUILD_ARGS} --strategy=docker
+                        oc new-build --binary --name=${APP_NAME} -l app=${APP_NAME} ${BUILD_ARGS} --strategy=docker || rc=$?
                         oc start-build ${APP_NAME} --from-archive=${PACKAGE} ${BUILD_ARGS} --follow
                         # used for internal sandbox build ....
                         oc tag ${OPENSHIFT_BUILD_NAMESPACE}/${APP_NAME}:latest ${TARGET_NAMESPACE}/${APP_NAME}:${VERSION}
